@@ -13,12 +13,52 @@ And because the team might need to do fast aggregations on large amounts of data
 
 The ETL pipeline is also there to process and import data into the existing data model.
 
-##  dimension and fct tables:
-* dim_users
-* dim_times
-* dim_artists
-* dim_songs
-* fct_songplays
+##  Database Schema
+There are 4 dimension tables and 1 fact table
+![ER-Diagram](ER-diagram.png)
+
+
+This design offers flexibility with the queries being used for analysis. Here are some example queries:
+What are the top 10 most popular songs for the users on different levels?
+What is the distribution of their released years?
+Who are the most popular artists in 2018? And where are they from?
+
+##  ETL Process
+#### Song Dataset
+The first dataset is a subset of real data from the Million Song Dataset. Each file is in JSON format and contains
+metadata about a song and the artist of that song. The files are partitioned by the first three letters of each song's
+track ID. For example, here are filepaths to two files in this dataset.
+
+```song_data/A/B/C/TRABCEI128F424C983.json
+song_data/A/A/B/TRAABJL12903CDCF1A.json
+```
+And below is an example of what a single song file, TRAABJL12903CDCF1A.json, looks like.
+
+```{
+    "num_songs": 1,
+    "artist_id": "ARJIE2Y1187B994AB7",
+    "artist_latitude": null,
+    "artist_longitude": null,
+    "artist_location": "",
+    "artist_name": "Line Renaud",
+    "song_id": "SOUPIRU12A6D4FA1E1",
+    "title": "Der Kleine Dompfaff",
+     "duration": 152.92036,
+     "year": 0
+ }```
+
+This information is parsed to populate the dim_songs and dim_artists Dimension tables.
+
+#### Log Dataset
+The log files in the dataset are partitioned by year and month. For example, here are filepaths to two files in this dataset.
+
+```log_data/2018/11/2018-11-12-events.json
+log_data/2018/11/2018-11-13-events.json
+```
+This data contains information of which songs Users listened to at a specific time. Information is parsed to provide
+data for the fct_songplays table and the dim_user and dim_times tables. The fct_songplays.artist_id and fct_songplays.song_id
+columns are populated by a lookup based on Artist Name Song Title respectively .
+
 
 ## File guide:
 
@@ -48,3 +88,6 @@ The command does a few things:
 * 3: run **create_tables.py**
 * 4: run **etl.py**
 * 5: deactivate the virtual environment
+
+## Acknowledgments
+* With help from Udacity Team

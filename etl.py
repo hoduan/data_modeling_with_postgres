@@ -47,20 +47,18 @@ def temp_to_main_table(cur, main_table, temp_table, conflict_key, query_on_confl
     - load all the records from the temp table into the target table, and do nothing if there
     is conflict on key conflict_key
     """
-    query = """DO NOTHING"""
+    query_update = "DO NOTHING;"
     if query_on_conflict:
-        query = query_on_conflict
+        query_update = query_on_conflict
 
-    try:
-        cur.execute(
-            f"""
-                INSERT INTO {main_table}
+    query = f"""INSERT INTO {main_table}
                 SELECT * FROM {temp_table}
                 ON CONFLICT ({conflict_key})
-                {query}
+                {query_update}
             """
-        )
 
+    try:
+        cur.execute(query)
     except (Exception, psycopg2.DatabaseError) as e:
         print(e)
 
@@ -78,6 +76,7 @@ def run_copy_from(cur, file, table, sep, columns):
     names
 
     """
+
     try:
         cur.copy_from(file, table, sep=sep, columns=columns)
 
@@ -110,8 +109,10 @@ def process_song_file(cur, filepath):
             # for dim_artists table
             artist_name = song_data['artist_name'].replace("'", " ")
             artist_location = song_data['artist_location']
-            artist_latitude = song_data['artist_latitude']
-            artist_longitude = song_data['artist_longitude']
+            # if artist_latitude is Null in the log file, set it to 0
+            artist_latitude = song_data['artist_latitude'] if song_data['artist_latitude'] else 0
+            # if artist_longitude is Null in the log file, set it to 0
+            artist_longitude = song_data['artist_longitude'] if song_data['artist_longitude'] else 0
 
             # for both dim_songs and dim_artists
             artist_id = song_data['artist_id']
@@ -121,22 +122,24 @@ def process_song_file(cur, filepath):
             artist_writer.writerow(
                 [artist_id, artist_name, artist_location, artist_latitude, artist_longitude])
 
-    with open(songs_file, 'r') as sf, open(artists_file, 'r') as af:
-        # import the data into a tmp table first then to the dim table to drop conflict
+    # insert song data entries into dim_songs
+    with open(songs_file, 'r') as sf:
         print(f'inserting song records into {dim_songs}')
         tmp_songs = 'tmp_songs'
         make_a_tmp_table(cur, dim_songs, tmp_songs)
         run_copy_from(cur, sf, tmp_songs, sep=delimeter,
                       columns=['song_id', 'title', 'artist_id', 'year', 'duration'])
-        temp_to_main_table(cur, dim_songs, tmp_songs, 'song_id')
+        temp_to_main_table(cur, dim_songs, tmp_songs, conflict_key='song_id')
         print(f'finished inserting song records into {dim_songs}')
 
+    # insert artist data entries into dim_artists
+    with open(artists_file, 'r') as af:
         print(f'inserting artist records into {dim_artists}')
         tmp_artists = 'tmp_artists'
         make_a_tmp_table(cur, dim_artists, tmp_artists)
         run_copy_from(cur, af, tmp_artists, sep=delimeter,
                       columns=['artist_id', 'name', 'location', 'latitude', 'longitude'])
-        temp_to_main_table(cur, dim_artists, tmp_artists, 'artist_id')
+        temp_to_main_table(cur, dim_artists, tmp_artists, conflict_key='artist_id')
         print(f'finished inserting artist records into {dim_artists}')
 
 
@@ -175,22 +178,30 @@ def handle_users_table(cur, song_play_list):
     - process the song play data entries to extract users info and then write user entries into a
     csv file, after that load the user entries from the csv file into the dim_users table
     """
-    with open(users_file, 'w+') as df:
-        users_writer = csv.writer(df, delimiter=delimeter)
-        for line in song_play_list:
-            user_id = line['userId']
-            first_name = line['firstName']
-            last_name = line['lastName']
-            gender = line['gender']
-            level = line['level']
-            users_writer.writerow([user_id, first_name, last_name, gender, level])
+    users = []
+    for line in song_play_list:
+        user_id = line['userId']
+        first_name = line['firstName']
+        last_name = line['lastName']
+        gender = line['gender']
+        level = line['level']
+        ts = line['ts']
+        users += [(user_id, first_name, last_name, gender, level, ts)]
+    df = pd.DataFrame(data=users,
+                      columns=['user_id', 'first_name', 'last_name', 'gender', 'level', 'ts'])
+    # sort user entries by timestamp in descending order, and then if there are multiple records
+    # for a user_id, only keep the first occurrence
+    df = df.sort_values(by='ts', ascending=False)
+    df = df.drop_duplicates(subset='user_id', keep='first')
+    df = df.drop(columns=['ts'])
+    df.to_csv(users_file, mode='w+', index=False, header=False)
 
     with open(users_file, 'r') as df:
         tmp_users = 'tmp_users'
         make_a_tmp_table(cur, dim_users, tmp_users)
-        run_copy_from(cur, df, tmp_users, sep=delimeter,
+        run_copy_from(cur, df, tmp_users, sep=',',
                       columns=['user_id', 'first_name', 'last_name', 'gender', 'level'])
-        query_on_conflict = """DO UPDATE SET level=EXCLUDED.level"""
+        query_on_conflict = """DO UPDATE SET level=EXCLUDED.level;"""
         temp_to_main_table(cur, dim_users, tmp_users, conflict_key='user_id',
                            query_on_conflict=query_on_conflict)
 
