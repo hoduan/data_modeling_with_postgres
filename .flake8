@@ -1,0 +1,6 @@
+[flake8]
+exclude =
+    ./.data_modeling_pg_venv,
+    .pytest-cache,
+    pytest.ini,
+max-line-length = 100
