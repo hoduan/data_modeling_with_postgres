@@ -29,12 +29,14 @@ The first dataset is a subset of real data from the Million Song Dataset. Each f
 metadata about a song and the artist of that song. The files are partitioned by the first three letters of each song's
 track ID. For example, here are filepaths to two files in this dataset.
 
-```song_data/A/B/C/TRABCEI128F424C983.json
+```
+song_data/A/B/C/TRABCEI128F424C983.json
 song_data/A/A/B/TRAABJL12903CDCF1A.json
 ```
 And below is an example of what a single song file, TRAABJL12903CDCF1A.json, looks like.
 
-```{
+```
+{
     "num_songs": 1,
     "artist_id": "ARJIE2Y1187B994AB7",
     "artist_latitude": null,
@@ -53,7 +55,8 @@ This information is parsed to populate the dim_songs and dim_artists Dimension t
 #### Log Dataset
 The log files in the dataset are partitioned by year and month. For example, here are filepaths to two files in this dataset.
 
-```log_data/2018/11/2018-11-12-events.json
+```
+log_data/2018/11/2018-11-12-events.json
 log_data/2018/11/2018-11-13-events.json
 ```
 This data contains information of which songs Users listened to at a specific time. Information is parsed to provide
@@ -81,7 +84,8 @@ This notebook shows the queries I ran while building up the elt to make sure the
 
 ## How to run?
 simply run below command in the project directory on Linux/Mac terminal:
-```./run-test.sh
+```
+./run-test.sh
 ```
 
 The command does a few things:
