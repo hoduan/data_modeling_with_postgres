@@ -34,7 +34,7 @@ def make_a_tmp_table(cur, main_table, temp_table):
         print(e)
 
 
-def temp_to_main_table(cur, main_table, temp_table, conflict_key, query_on_conflict):
+def temp_to_main_table(cur, main_table, temp_table, conflict_key, query_on_conflict=None):
     """
     :param cur: psycopg2 connection cursor
     :param main_table: the target table that records should get inserted into
@@ -47,25 +47,19 @@ def temp_to_main_table(cur, main_table, temp_table, conflict_key, query_on_confl
     - load all the records from the temp table into the target table, and do nothing if there
     is conflict on key conflict_key
     """
+    query = """DO NOTHING"""
+    if query_on_conflict:
+        query = query_on_conflict
+
     try:
-        if query_on_conflict:
-            cur.execute(
-                f"""
-                            INSERT INTO {main_table}
-                            SELECT * FROM {temp_table}
-                            ON CONFLICT ({conflict_key})
-                            {query_on_conflict}
-                            """
-            )
-        else:
-            cur.execute(
-                f"""
+        cur.execute(
+            f"""
                 INSERT INTO {main_table}
                 SELECT * FROM {temp_table}
                 ON CONFLICT ({conflict_key})
-                DO Nothing
-                """
-            )
+                {query}
+            """
+        )
 
     except (Exception, psycopg2.DatabaseError) as e:
         print(e)
@@ -196,7 +190,7 @@ def handle_users_table(cur, song_play_list):
         make_a_tmp_table(cur, dim_users, tmp_users)
         run_copy_from(cur, df, tmp_users, sep=delimeter,
                       columns=['user_id', 'first_name', 'last_name', 'gender', 'level'])
-        query_on_conflict = f"""DO UPDATE SET level=EXCLUDED.level"""
+        query_on_conflict = """DO UPDATE SET level=EXCLUDED.level"""
         temp_to_main_table(cur, dim_users, tmp_users, conflict_key='user_id',
                            query_on_conflict=query_on_conflict)
 
