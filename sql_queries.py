@@ -15,11 +15,11 @@ time_table_drop = f"DROP TABLE  IF EXISTS {dim_times}"
 songplay_table_create = (
     f""" CREATE TABLE IF NOT EXISTS {fct_songplays}(
         songplay_id SERIAL PRIMARY KEY,
-        start_time TIMESTAMP,
-        user_id INT,
+        start_time TIMESTAMP NOT NULL,
+        user_id INT NOT NULL,
         level VARCHAR,
-        song_id VARCHAR,
-        artist_id VARCHAR,
+        song_id VARCHAR NOT NULL,
+        artist_id VARCHAR NOT NULL,
         session_id INT,
         location VARCHAR,
         user_agent VARCHAR);
@@ -48,8 +48,8 @@ artist_table_create = (
         artist_id VARCHAR PRIMARY KEY,
         name VARCHAR,
         location VARCHAR,
-        latitude VARCHAR,
-        longitude VARCHAR);
+        latitude NUMERIC,
+        longitude NUMERIC);
     """)
 
 time_table_create = (

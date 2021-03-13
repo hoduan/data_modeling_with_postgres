@@ -34,27 +34,38 @@ def make_a_tmp_table(cur, main_table, temp_table):
         print(e)
 
 
-def temp_to_main_table(cur, main_table, temp_table, conflict_key):
+def temp_to_main_table(cur, main_table, temp_table, conflict_key, query_on_conflict):
     """
     :param cur: psycopg2 connection cursor
     :param main_table: the target table that records should get inserted into
     :param temp_table: a temporary table that holds the records which should get inserted into
     main_table
     :param conflict_key: the column on which the conflict would happen
+    :query_on_conflict: the query to run on conflict
     :return: None
 
     - load all the records from the temp table into the target table, and do nothing if there
     is conflict on key conflict_key
     """
     try:
-        cur.execute(
-            f"""
-            INSERT INTO {main_table}
-            SELECT * FROM {temp_table}
-            ON CONFLICT ({conflict_key})
-            DO Nothing
-            """
-        )
+        if query_on_conflict:
+            cur.execute(
+                f"""
+                            INSERT INTO {main_table}
+                            SELECT * FROM {temp_table}
+                            ON CONFLICT ({conflict_key})
+                            {query_on_conflict}
+                            """
+            )
+        else:
+            cur.execute(
+                f"""
+                INSERT INTO {main_table}
+                SELECT * FROM {temp_table}
+                ON CONFLICT ({conflict_key})
+                DO Nothing
+                """
+            )
 
     except (Exception, psycopg2.DatabaseError) as e:
         print(e)
@@ -185,7 +196,9 @@ def handle_users_table(cur, song_play_list):
         make_a_tmp_table(cur, dim_users, tmp_users)
         run_copy_from(cur, df, tmp_users, sep=delimeter,
                       columns=['user_id', 'first_name', 'last_name', 'gender', 'level'])
-        temp_to_main_table(cur, dim_users, tmp_users, conflict_key='user_id')
+        query_on_conflict = f"""DO UPDATE SET level=EXCLUDED.level"""
+        temp_to_main_table(cur, dim_users, tmp_users, conflict_key='user_id',
+                           query_on_conflict=query_on_conflict)
 
 
 def handle_time_table(cur, song_play_list):
