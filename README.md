@@ -45,7 +45,8 @@ And below is an example of what a single song file, TRAABJL12903CDCF1A.json, loo
     "title": "Der Kleine Dompfaff",
      "duration": 152.92036,
      "year": 0
- }```
+ }
+ ```
 
 This information is parsed to populate the dim_songs and dim_artists Dimension tables.
 
@@ -80,7 +81,8 @@ This notebook shows the queries I ran while building up the elt to make sure the
 
 ## How to run?
 simply run below command in the project directory on Linux/Mac terminal:
-```./run-test.sh```
+```./run-test.sh
+```
 
 The command does a few things:
 * 1: creates a python3 virtual environment
